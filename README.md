@@ -193,4 +193,4 @@ The execute prompt calls `review_equity_order` (dry-run preview) before `place_e
 
 ## Disclaimer
 
-This is for informational and research purposes. Nothing here is financial advice. Use real money at your own risk.
+This is for informational and research purposes. Not financial advice.
