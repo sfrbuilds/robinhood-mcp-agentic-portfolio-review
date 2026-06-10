@@ -2,9 +2,9 @@
 
 A rules-based equity portfolio screening and risk management system, built natively on the [Robinhood Agentic Trading MCP](https://robinhood.com/us/en/support/articles/agentic-trading-overview/).
 
-Run a daily portfolio review. Get a written assessment of every position. Execute engine-mandated exits through Robinhood — optionally automated, always auditable.
+Run a daily portfolio review. Get a written assessment of every position. Execute engine-mandated exits through Robinhood automatically (optional).
 
-**Scope:** position screening and selling. No buy signals, no entry automation. That's intentional.
+**Scope:** position screening and selling only. No buy signals, no entry automation.
 
 ---
 
