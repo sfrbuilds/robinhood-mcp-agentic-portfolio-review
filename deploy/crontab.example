@@ -1,0 +1,23 @@
+# Portfolio Review — Automated Cron Schedule
+# -------------------------------------------
+# Install: crontab -e, paste these lines
+#
+# TZ=America/New_York tells cron to interpret all times in ET.
+# This handles EDT/EST daylight saving automatically — no duplicate entries needed.
+#
+# The market_schedule.py check inside run_review.sh handles weekends and holidays,
+# so cron only needs to gate on weekdays (1-5).
+
+TZ=America/New_York
+
+# Suppress cron's default email output (script logs to reviews/ and Telegram)
+MAILTO=""
+
+# Paths — update to match your server
+REPO=/home/ec2-user/robinhood-mcp-agentic-portfolio-review
+
+# 9:45 AM ET — 15 minutes after open
+45 9 * * 1-5 $REPO/scripts/run_review.sh morning >> $REPO/logs/cron.log 2>&1
+
+# 3:45 PM ET — 15 minutes before close
+45 15 * * 1-5 $REPO/scripts/run_review.sh afternoon >> $REPO/logs/cron.log 2>&1

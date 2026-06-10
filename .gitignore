@@ -1,0 +1,21 @@
+.env
+*.pem
+*.key
+logs/
+__pycache__/
+*.pyc
+drawdown_guard.json
+order_journal.jsonl
+ticker_exit_cooldowns.json
+.DS_Store
+
+# Live portfolio outputs — never commit
+actions.json
+reviews/
+
+# Internal docs
+intern_brief.docx
+trading_engine.py
+
+# Claude working memory
+CLAUDE.md
