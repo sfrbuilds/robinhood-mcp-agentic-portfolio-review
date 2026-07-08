@@ -314,7 +314,7 @@ def build_prompt(payload: dict) -> str:
             "## Market regime",
             f"  SPY:  ${spy.get('price', 'n/a')}  day {spy.get('day_change_pct', 'n/a')}%  "
             f"30d {spy.get('return_30d_pct', 'n/a')}%  YTD {spy.get('return_ytd_pct', 'n/a')}%",
-            f"  SPY vs EMA20: {'ABOVE (regime OK)' if spy.get('above_ema_20') else 'BELOW (entries blocked)'}",
+            f"  SPY vs EMA20: {'ABOVE' if spy.get('above_ema_20') else 'BELOW'}",
             f"  Golden cross: {'YES' if spy.get('golden_cross') else 'NO (death cross)'}",
             f"  VIX: {vix.get('current', 'n/a')}  (30d avg {vix.get('avg_30d', 'n/a')})"
             + ("  *** VIX HARD BLOCK ***" if vix.get("hard_block") else ""),
@@ -389,8 +389,6 @@ def build_prompt(payload: dict) -> str:
         "",
         "**TOP ACTION ITEMS** (max 3, numbered, specific and actionable)",
         "",
-        "**CASH DEPLOYMENT** (if any: is there a setup worth entering now? if not, say so explicitly)",
-        "",
         "Be direct. No hedging. If the data doesn't support a strong view, say that. "
         "Flag any positions at or near their ATR-based stop. "
         "Reference specific prices, percentages, and indicator readings.",
@@ -447,11 +445,10 @@ ACTIONS_TOOL = {
             },
             "regime_summary": {
                 "type": "object",
-                "required": ["spy_above_ema20", "vix", "new_entries_blocked", "note"],
+                "required": ["spy_above_ema20", "vix", "note"],
                 "properties": {
                     "spy_above_ema20":    {"type": "boolean"},
                     "vix":               {"type": "number"},
-                    "new_entries_blocked":{"type": "boolean"},
                     "note":              {"type": "string"}
                 }
             },
@@ -468,7 +465,7 @@ ACTIONS_TOOL = {
                     "properties": {
                         "action_id":          {"type": "string", "description": "e.g. action_001"},
                         "symbol":             {"type": "string"},
-                        "action_type":        {"type": "string", "enum": ["SELL", "SELL_PARTIAL", "BUY", "SET_STOP"]},
+                        "action_type":        {"type": "string", "enum": ["SELL", "SELL_PARTIAL", "SET_STOP"]},
                         "urgency":            {"type": "string", "enum": ["immediate", "today", "this_week"]},
                         "rationale":          {"type": "string", "description": "Concise reason citing specific indicators"},
                         "conditions_passing": {"type": "integer", "description": "Engine conditions currently passing (0-4)"},
@@ -478,7 +475,7 @@ ACTIONS_TOOL = {
                             "required": ["symbol", "side", "order_type", "time_in_force"],
                             "properties": {
                                 "symbol":        {"type": "string"},
-                                "side":          {"type": "string", "enum": ["buy", "sell"]},
+                                "side":          {"type": "string", "enum": ["sell"]},
                                 "order_type":    {"type": "string", "enum": ["market", "limit"]},
                                 "quantity":      {"type": "number", "description": "Shares. Required unless using notional."},
                                 "notional":      {"type": "number", "description": "Dollar amount. Use instead of quantity for fractional."},
@@ -577,7 +574,7 @@ def generate_actions(payload: dict) -> dict:
         "- 0-1 conditions passing → action_type SELL (full exit) unless fundamental override is exceptionally strong",
         "- 2 conditions passing → action_type SELL_PARTIAL (reduce by 50%) or SELL",
         "- 3-4 conditions passing → no_action",
-        "- If SPY is below EMA20, no BUY actions regardless of individual signals",
+,
         "- order_params must be complete and ready to pass directly to Robinhood MCP place_equity_order",
         f"- For market sells: time_in_force = {tif}",
         "- ready_to_execute must always be false",
@@ -711,9 +708,7 @@ if __name__ == "__main__":
     print(f"{'─'*60}")
 
     regime = actions.get("regime_summary", {})
-    print(f"Health: {actions.get('portfolio_health_score', '?')}/10  |  "
-          f"Entries blocked: {regime.get('new_entries_blocked', '?')}  |  "
-          f"{regime.get('note', '')}")
+    print(f"Health: {actions.get('portfolio_health_score', '?')}/10  |  {regime.get('note', '')}")
     print()
 
     acts = actions.get("actions", [])
