@@ -2,7 +2,7 @@
 
 A rules-based equity portfolio screening tool, built natively on the [Robinhood Agentic Trading MCP](https://robinhood.com/us/en/support/articles/agentic-trading-overview/).
 
-Run a daily portfolio review. Get a written assessment of every position with explicit hold or exit-consideration flags. Optionally execute engine-flagged exits through Robinhood — dry-run by default, always auditable.
+Run a daily portfolio review. Get a written assessment of every position with explicit hold or exit-consideration flags. Optionally execute engine-flagged exits through Robinhood (dry-run by default, always auditable).
 
 **Scope:** position screening and exit decisions only. No buy signals, no entry automation, no forced holding periods, no market-regime-triggered exits. That's intentional.
 
@@ -12,7 +12,7 @@ Run a daily portfolio review. Get a written assessment of every position with ex
 
 1. Pulls your live Robinhood positions via the MCP
 2. Fetches technicals and fundamentals for every holding (MACD, RSI, EMAs, ATR, Bollinger Bands, P/E, analyst targets, and more)
-3. Fetches macro context: SPY regime, VIX, sector ETF trends — displayed in the written review for situational awareness, not used to trigger exits
+3. Fetches macro context: SPY regime, VIX, sector ETF trends; displayed in the written review for situational awareness, not used to trigger exits
 4. Runs each position through a 4-condition engine signal check
 5. Calls Claude (Sonnet) for a written portfolio review with explicit hold/exit calls
 6. Generates a structured `actions.json` of recommended trades, shaped for Robinhood MCP execution
@@ -31,7 +31,7 @@ A position is healthy if at least 3 of these 4 hold:
 | 3 | Price above EMA20 | Short-term trend aligned |
 | 4 | Golden cross (EMA50 > EMA200) | Long-term trend aligned |
 
-**0–1 conditions passing → flagged as an exit candidate in the written review.** In default dry-run mode, nothing is sent to Robinhood. When `LIVE_TRADING` is enabled, engine-flagged immediate exits (`SELL` / `SELL_PARTIAL`) are auto-approved and executed. Actions with `urgency: today` or `this_week` are never auto-approved — those go through the manual approval path.
+**0–1 conditions passing → flagged as an exit candidate in the written review.** In default dry-run mode, nothing is sent to Robinhood. When `LIVE_TRADING` is enabled, engine-flagged immediate exits (`SELL` / `SELL_PARTIAL`) are auto-approved and executed. Actions with `urgency: today` or `this_week` are never auto-approved; those go through the manual approval path.
 
 ---
 
@@ -41,7 +41,7 @@ A position is healthy if at least 3 of these 4 hold:
 robinhood-mcp-agentic-portfolio-review/
 ├── research/
 │   ├── ticker_analysis.py      # technicals + fundamentals via yfinance
-│   ├── portfolio_review.py     # main pipeline — review + actions.json
+│   ├── portfolio_review.py     # main pipeline: review + actions.json
 │   ├── fetch_positions.md      # claude -p prompt: pulls live Robinhood positions
 │   └── execute_actions.md      # claude -p prompt: executes approved actions via Robinhood MCP
 ├── scripts/
@@ -79,7 +79,7 @@ Robinhood's Agentic Trading is a dedicated account type where an AI agent can pl
 
 #### Which AI agent?
 
-The Robinhood Trading MCP is a standard MCP server — it works with any MCP-compatible agent: Claude Code, OpenAI Codex, Cursor, Windsurf, or any agent framework that supports the MCP protocol. This repo is built on **Claude Code**, but swapping the agent layer is straightforward since all execution logic lives in the `.md` prompt files.
+The Robinhood Trading MCP is a standard MCP server; it works with any MCP-compatible agent: Claude Code, OpenAI Codex, Cursor, Windsurf, or any agent framework that supports the MCP protocol. This repo is built on **Claude Code**, but swapping the agent layer is simple since all execution logic lives in the `.md` prompt files.
 
 #### Connect the MCP to Claude Code
 
@@ -107,17 +107,23 @@ Select `robinhood-trading` and press **Authenticate**. This opens a Robinhood OA
 
 `robinhood-trading` should show as `✓ connected` with tools listed (get_account, list_positions, place_equity_order, etc.).
 
-> **Note:** The MCP uses OAuth — your credentials are never stored in plaintext anywhere in this repo. The session token is managed by Claude Code.
+> **Note:** The MCP uses OAuth; your credentials are never stored in plaintext anywhere in this repo. The session token is managed by Claude Code.
 
 ---
 
-## Daily run
+## Running a review
 
 ```bash
-./scripts/run_review.sh
+./scripts/run_review.sh morning
 ```
 
-That's it. The script handles everything in sequence: checks it's a trading day, pulls live positions via the Robinhood MCP, runs the analysis pipeline, and sends results to Telegram. To enable automated execution of engine-flagged exits, set `LIVE_TRADING=true` in your `.env`.
+This triggers a full run: checks it's a trading day, pulls live positions via the Robinhood MCP, runs the analysis pipeline, and sends results to Telegram. You run it manually, or wire it to cron (see `deploy/crontab.example` and `deploy/SETUP.md`).
+
+**MCP auth requirement.** The script calls `claude -p research/fetch_positions.md` headlessly. This requires a valid Robinhood MCP session stored in `~/.claude/` from a prior interactive auth. If the session token has expired, the script errors on the positions fetch step. Re-run the interactive auth (Step 5 in `deploy/SETUP.md`) to refresh it.
+
+**Cron automation.** `crontab.example` schedules runs at 9:45 AM and 3:45 PM ET on trading days. Cron works reliably as long as the MCP token stays valid. Token expiry surfaces as a Telegram error alert (if configured) or as an empty `positions.json` in the logs.
+
+To enable automated execution of engine-flagged exits, set `LIVE_TRADING=true` in your `.env`.
 
 Output:
 - Written portfolio review (stdout + Telegram)
@@ -150,7 +156,7 @@ python research/portfolio_review.py --mock    # test with mock portfolio, no MCP
 
 **What gets auto-approved when live:**
 - `SELL` or `SELL_PARTIAL` actions with `urgency: immediate`
-- These are positions at 0–1 conditions — engine rule violations, not judgment calls
+- These are positions at 0–1 conditions (engine rule violations, not judgment calls)
 
 **What never gets auto-approved:**
 - `BUY` actions (no buy path exists in this version)
@@ -180,9 +186,9 @@ ATR is fetched for each position and used to compute drawdown and profit levels 
 | Threshold | Value | What it means in review |
 |---|---|---|
 | Stop level | 1.5 × ATR below entry | Position flagged for exit consideration if price has drawn down to this level |
-| Profit target | 2.5 × ATR above entry | Position near target — review may suggest trimming or full exit |
+| Profit target | 2.5 × ATR above entry | Position near target; review may suggest trimming or full exit |
 
-These are advisory thresholds displayed in the written review. The exit decision is always yours unless `LIVE_TRADING` is enabled, in which case only 0–1 condition positions (immediate urgency) are auto-executed — not target/stop proximity alone.
+These are advisory thresholds displayed in the written review. The exit decision is always yours unless `LIVE_TRADING` is enabled, in which case only 0–1 condition positions (immediate urgency) are auto-executed, not target/stop proximity alone.
 
 ---
 
