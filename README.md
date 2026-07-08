@@ -1,10 +1,10 @@
 # robinhood-mcp-agentic-portfolio-review
 
-A rules-based equity portfolio screening and risk management system, built natively on the [Robinhood Agentic Trading MCP](https://robinhood.com/us/en/support/articles/agentic-trading-overview/).
+A rules-based equity portfolio screening tool, built natively on the [Robinhood Agentic Trading MCP](https://robinhood.com/us/en/support/articles/agentic-trading-overview/).
 
-Run a daily portfolio review. Get a written assessment of every position. Execute engine-mandated exits through Robinhood — optionally automated, always auditable.
+Run a daily portfolio review. Get a written assessment of every position with explicit hold or exit-consideration flags. Optionally execute engine-flagged exits through Robinhood — dry-run by default, always auditable.
 
-**Scope:** position screening and selling. No buy signals, no entry automation. That's intentional.
+**Scope:** position screening and exit decisions only. No buy signals, no entry automation, no forced holding periods, no market-regime-triggered exits. That's intentional.
 
 ---
 
@@ -12,7 +12,7 @@ Run a daily portfolio review. Get a written assessment of every position. Execut
 
 1. Pulls your live Robinhood positions via the MCP
 2. Fetches technicals and fundamentals for every holding (MACD, RSI, EMAs, ATR, Bollinger Bands, P/E, analyst targets, and more)
-3. Fetches macro context: SPY regime, VIX, sector ETF trends
+3. Fetches macro context: SPY regime, VIX, sector ETF trends — displayed in the written review for situational awareness, not used to trigger exits
 4. Runs each position through a 4-condition engine signal check
 5. Calls Claude (Sonnet) for a written portfolio review with explicit hold/exit calls
 6. Generates a structured `actions.json` of recommended trades, shaped for Robinhood MCP execution
@@ -31,13 +31,7 @@ A position is healthy if at least 3 of these 4 hold:
 | 3 | Price above EMA20 | Short-term trend aligned |
 | 4 | Golden cross (EMA50 > EMA200) | Long-term trend aligned |
 
-**0–1 conditions passing → EXIT CANDIDATE.** The engine doesn't suggest it; it mandates it.
-
-Volume (1.3x 20-day average) is required for new entries but is not used as a hold/exit signal.
-
-Two macro hard blocks apply before any evaluation:
-- SPY below EMA20: all new entries blocked
-- VIX ≥ 40: all entries blocked regardless of individual signal
+**0–1 conditions passing → flagged as an exit candidate in the written review.** In default dry-run mode, nothing is sent to Robinhood. When `LIVE_TRADING` is enabled, engine-flagged immediate exits (`SELL` / `SELL_PARTIAL`) are auto-approved and executed. Actions with `urgency: today` or `this_week` are never auto-approved — those go through the manual approval path.
 
 ---
 
@@ -50,13 +44,16 @@ robinhood-mcp-agentic-portfolio-review/
 │   ├── portfolio_review.py     # main pipeline — review + actions.json
 │   ├── fetch_positions.md      # claude -p prompt: pulls live Robinhood positions
 │   └── execute_actions.md      # claude -p prompt: executes approved actions via Robinhood MCP
-├── trading_engine.py           # reference implementation (signal logic, ATR sizing, risk rules)
-├── CLAUDE.md                   # agent system prompt — encodes all engine rules
+├── scripts/
+│   ├── run_review.sh           # orchestrator: fetch positions → review → notify
+│   ├── market_schedule.py      # NYSE trading day detection
+│   └── notify.py               # Telegram delivery
+├── deploy/
+│   ├── SETUP.md                # one-time EC2 setup guide
+│   └── crontab.example         # 9:45 AM + 3:45 PM ET, TZ-aware
 ├── .env.example
 └── requirements.txt
 ```
-
-`trading_engine.py` is a reference implementation used for developing and validating the signal logic. The live pipeline is `portfolio_review.py`.
 
 ---
 
@@ -116,27 +113,27 @@ Select `robinhood-trading` and press **Authenticate**. This opens a Robinhood OA
 
 ## Daily run
 
-**Step 1: Pull live positions**
-
 ```bash
-claude -p research/fetch_positions.md > positions.json
+./scripts/run_review.sh
 ```
 
-This runs inside Claude Code with the Robinhood MCP connected and writes your current holdings to `positions.json`.
-
-**Step 2: Run the review**
-
-```bash
-# Dry run (default — nothing sent to Robinhood)
-python research/portfolio_review.py
-
-# With live execution of engine-mandated exits
-python research/portfolio_review.py --live
-```
+That's it. The script handles everything in sequence: checks it's a trading day, pulls live positions via the Robinhood MCP, runs the analysis pipeline, and sends results to Telegram. To enable automated execution of engine-flagged exits, set `LIVE_TRADING=true` in your `.env`.
 
 Output:
-- Written portfolio review printed to stdout
-- `actions.json` written with structured trade recommendations
+- Written portfolio review (stdout + Telegram)
+- `actions.json` with structured trade recommendations
+
+**Under the hood** (for debugging or running components individually):
+
+```bash
+# Pull positions manually
+claude -p research/fetch_positions.md > positions.json
+
+# Run pipeline against existing positions.json
+python research/portfolio_review.py           # dry run
+python research/portfolio_review.py --live    # execute immediate exits
+python research/portfolio_review.py --mock    # test with mock portfolio, no MCP needed
+```
 
 ---
 
@@ -176,18 +173,16 @@ The execute prompt calls `review_equity_order` (dry-run preview) before `place_e
 
 ---
 
-## Risk parameters
+## Exit thresholds
 
-| Parameter | Value | Description |
+ATR is fetched for each position and used to compute drawdown and profit levels relative to your actual entry price.
+
+| Threshold | Value | What it means in review |
 |---|---|---|
-| Max positions | 5 | Concurrent open positions |
-| Risk per trade | 1% | Portfolio equity risked, ATR-sized |
-| Stop | 1.5 × ATR below entry | Volatility-scaled |
-| Target | 2.5 × ATR above entry | ~1.67 R:R minimum |
-| Max hold | 10 trading days | Time stop |
-| VIX hard block | ≥ 40 | No entries |
-| SPY filter | Above EMA20 | Regime check |
-| Sector concentration | Max 60% / max 3 positions | Per GICS sector |
+| Stop level | 1.5 × ATR below entry | Position flagged for exit consideration if price has drawn down to this level |
+| Profit target | 2.5 × ATR above entry | Position near target — review may suggest trimming or full exit |
+
+These are advisory thresholds displayed in the written review. The exit decision is always yours unless `LIVE_TRADING` is enabled, in which case only 0–1 condition positions (immediate urgency) are auto-executed — not target/stop proximity alone.
 
 ---
 
