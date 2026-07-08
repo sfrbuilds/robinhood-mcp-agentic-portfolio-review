@@ -65,9 +65,6 @@ MODEL = "claude-sonnet-4-6"
 LIVE_TRADING = os.environ.get("LIVE_TRADING", "false").lower() == "true"
 
 # Engine risk parameters (must match CLAUDE.md)
-MAX_POSITIONS        = 5
-RISK_PER_TRADE_PCT   = 1.0
-MAX_HOLD_DAYS        = 10
 VIX_HARD_BLOCK       = 40
 VIX_SIZE_DOWN        = 25
 MIN_RSI              = 45
@@ -300,7 +297,6 @@ def build_prompt(payload: dict) -> str:
         "Do NOT say 'at the open tomorrow' if the market is currently open.",
         "",
         "## Engine rules (enforce strictly)",
-        f"- Max {MAX_POSITIONS} positions, 1% risk per trade, max hold {MAX_HOLD_DAYS} trading days",
         f"- VIX hard block >= {VIX_HARD_BLOCK}; elevated >= {VIX_SIZE_DOWN} (size down)",
         "- Entry requires: MACD bullish + RSI 45-70 + price above EMA20 + golden cross",
         "- Position hold requires >= 3 of 4 conditions (volume not required for existing holds)",
@@ -309,7 +305,7 @@ def build_prompt(payload: dict) -> str:
         "## Account",
         f"  Equity: ${acct.get('equity', 'n/a'):,}",
         f"  Cash:   ${acct.get('cash', 'n/a'):,}  (buying power: ${acct.get('buying_power', 'n/a'):,})",
-        f"  Positions: {len(payload['positions'])} / {MAX_POSITIONS} max",
+        f"  Positions: {len(payload['positions'])}",
         "",
     ]
 
