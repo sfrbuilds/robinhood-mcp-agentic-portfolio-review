@@ -574,7 +574,6 @@ def generate_actions(payload: dict) -> dict:
         "- 0-1 conditions passing → action_type SELL (full exit) unless fundamental override is exceptionally strong",
         "- 2 conditions passing → action_type SELL_PARTIAL (reduce by 50%) or SELL",
         "- 3-4 conditions passing → no_action",
-,
         "- order_params must be complete and ready to pass directly to Robinhood MCP place_equity_order",
         f"- For market sells: time_in_force = {tif}",
         "- ready_to_execute must always be false",
