@@ -30,6 +30,7 @@ import os
 import json
 import math
 import subprocess
+import textwrap
 from datetime import date, datetime, timezone, timedelta
 
 # ── Dependency check ──────────────────────────────────────────────────────────
@@ -139,7 +140,7 @@ def market_status() -> dict:
         is_open = True
         mins_left = int(((CLOSE.hour * 60 + CLOSE.minute) - (t.hour * 60 + t.minute)))
         exec_language = f"market is OPEN. {mins_left} minutes remaining in regular session."
-        urgency_now   = "immediately — market is open NOW"
+        urgency_now   = "immediately (market is open NOW)"
     elif t < AH_CLOSE:
         state = "after_hours"
         is_open = False
@@ -539,12 +540,12 @@ def generate_actions(payload: dict) -> dict:
 
     # Urgency semantics depend on market state
     if mkt["is_open"]:
-        urgency_immediate = "immediate — market is open, execute now"
-        urgency_today     = "today — execute before close"
+        urgency_immediate = "immediate: market is open, execute now"
+        urgency_today     = "today: execute before close"
         tif               = "gfd"
     else:
-        urgency_immediate = f"immediate — execute at next open ({mkt['urgency_now']})"
-        urgency_today     = f"today — execute at next open ({mkt['urgency_now']})"
+        urgency_immediate = f"immediate: execute at next open ({mkt['urgency_now']})"
+        urgency_today     = f"today: execute at next open ({mkt['urgency_now']})"
         tif               = "gfd"
 
     lines = [
@@ -679,7 +680,7 @@ if __name__ == "__main__":
     review = synthesize(prompt)
 
     print("=" * 60)
-    print(f"PORTFOLIO REVIEW  —  {payload['as_of']}")
+    print(f"PORTFOLIO REVIEW  |  {payload['as_of']}")
     print(f"{'LIVE TRADING ENABLED' if live_trading else 'DRY RUN'}")
     print("=" * 60)
     print()
@@ -710,7 +711,7 @@ if __name__ == "__main__":
 
     # ── Print action summary ──────────────────────────────────────────────────
     print(f"{'─'*60}")
-    print(f"ACTIONS  {'(LIVE — executing now)' if live_trading and approved_count else '(DRY RUN — review actions.json)'}")
+    print(f"ACTIONS  {'(LIVE: executing now)' if live_trading and approved_count else '(DRY RUN: review actions.json)'}")
     print(f"{'─'*60}")
 
     regime = actions.get("regime_summary", {})
@@ -732,15 +733,18 @@ if __name__ == "__main__":
                 f"qty={qty}  {op.get('order_type','?')}  "
                 f"tif={op.get('time_in_force','?')}  [{status}]"
             )
-            print(f"       {a.get('rationale', '')[:120]}")
+            for ln in textwrap.wrap(a.get('rationale', ''), width=100, initial_indent='       ', subsequent_indent='       '):
+                print(ln)
     else:
-        print("  No actions recommended — all positions holding.")
+        print("  No actions recommended. All positions holding.")
 
     no_act = actions.get("no_action", [])
     if no_act:
         print()
         for n in no_act:
-            print(f"  --- {n['symbol']}: {n.get('rationale', '')[:100]}")
+            header = f"  --- {n['symbol']}: "
+            for ln in textwrap.wrap(header + n.get('rationale', ''), width=100, subsequent_indent=' ' * len(header)):
+                print(ln)
 
     print()
 
@@ -763,9 +767,9 @@ if __name__ == "__main__":
         print()
         print("To execute with live trading:")
         print(f"  LIVE_TRADING=true python research/portfolio_review.py")
-        print("  — or —")
+        print("  or:")
         print(f"  python research/portfolio_review.py --live")
         print()
         print("To manually approve specific actions:")
-        print(f"  1. Edit {actions_out} — set ready_to_execute: true on what you want")
+        print(f"  1. Edit {actions_out}: set ready_to_execute: true on what you want")
         print(f"  2. claude -p research/execute_actions.md")

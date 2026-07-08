@@ -1,0 +1,90 @@
+{
+  "account": {
+    "equity": 48500.00,
+    "cash": 2400.00,
+    "buying_power": 2400.00
+  },
+  "positions": [
+    {
+      "symbol": "NVDA",
+      "quantity": 25,
+      "avg_cost": 108.50,
+      "current_price": null,
+      "current_value": null,
+      "unrealized_pl": null,
+      "unrealized_pl_pct": null
+    },
+    {
+      "symbol": "PLTR",
+      "quantity": 80,
+      "avg_cost": 26.40,
+      "current_price": null,
+      "current_value": null,
+      "unrealized_pl": null,
+      "unrealized_pl_pct": null
+    },
+    {
+      "symbol": "MU",
+      "quantity": 45,
+      "avg_cost": 91.00,
+      "current_price": null,
+      "current_value": null,
+      "unrealized_pl": null,
+      "unrealized_pl_pct": null
+    },
+    {
+      "symbol": "SOXL",
+      "quantity": 200,
+      "avg_cost": 19.50,
+      "current_price": null,
+      "current_value": null,
+      "unrealized_pl": null,
+      "unrealized_pl_pct": null
+    },
+    {
+      "symbol": "MSFT",
+      "quantity": 12,
+      "avg_cost": 385.00,
+      "current_price": null,
+      "current_value": null,
+      "unrealized_pl": null,
+      "unrealized_pl_pct": null
+    },
+    {
+      "symbol": "AMZN",
+      "quantity": 10,
+      "avg_cost": 188.00,
+      "current_price": null,
+      "current_value": null,
+      "unrealized_pl": null,
+      "unrealized_pl_pct": null
+    },
+    {
+      "symbol": "JNJ",
+      "quantity": 20,
+      "avg_cost": 152.00,
+      "current_price": null,
+      "current_value": null,
+      "unrealized_pl": null,
+      "unrealized_pl_pct": null
+    },
+    {
+      "symbol": "KO",
+      "quantity": 40,
+      "avg_cost": 63.50,
+      "current_price": null,
+      "current_value": null,
+      "unrealized_pl": null,
+      "unrealized_pl_pct": null
+    },
+    {
+      "symbol": "XLU",
+      "quantity": 35,
+      "avg_cost": 71.00,
+      "current_price": null,
+      "current_value": null,
+      "unrealized_pl": null,
+      "unrealized_pl_pct": null
+    }
+  ]
+}
